@@ -1,0 +1,24 @@
+[package]
+name = "async-pidfd"
+version = "0.1.0"
+authors = ["Josh Triplett <josh@joshtriplett.org>"]
+edition = "2018"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/joshtriplett/async-pidfd"
+description = "Process file descriptors (pidfd) for Linux"
+readme = "README.md"
+keywords = ["process", "file-descriptor", "wait", "future", "futures"]
+categories = ["api-bindings", "asynchronous", "os::unix-apis"]
+
+[features]
+# By default, async-pidfd provides async support; however, if you only want
+# synchronous pidfd support, you can disable the async feature.
+default = ["async"]
+async = ["async-io"]
+
+[dependencies]
+async-io = { version = "0.1.11", optional = true }
+libc = "0.2.74"
+
+[dev-dependencies]
+futures-lite = "0.1.10"
