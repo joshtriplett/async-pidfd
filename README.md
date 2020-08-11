@@ -20,15 +20,24 @@ in the standard library. (Note that the portable `Child::id` function returns
 process IDs as `u32`, rather than as a `libc::pid_t`, necessitating a cast.)
 
 ```rust
-let child = std::process::Command::new("/bin/true").spawn()?;
-let pidfd = PidFd::from_pid(child.id() as libc::pid_t)?;
-let status = pidfd.wait()?.status();
-assert_eq!(status.code(), Some(0));
+use std::os::unix::process::ExitStatusExt;
+use std::process::{Command, ExitStatus};
 
-let child = std::process::Command::new("/bin/sh").arg("-c").arg("kill -9 $$").spawn()?;
-let pidfd = PidFd::from_pid(child.id() as libc::pid_t)?;
-let status = pidfd.wait()?.status();
-assert_eq!(status.signal(), Some(9));
+use async_pidfd::PidFd;
+
+fn main() -> std::io::Result<()> {
+    let child = Command::new("/bin/true").spawn()?;
+    let pidfd = PidFd::from_pid(child.id() as libc::pid_t)?;
+    let status = pidfd.wait()?.status();
+    assert_eq!(status.code(), Some(0));
+
+    let child = Command::new("/bin/sh").arg("-c").arg("kill -9 $$").spawn()?;
+    let pidfd = PidFd::from_pid(child.id() as libc::pid_t)?;
+    let status = pidfd.wait()?.status();
+    assert_eq!(status.signal(), Some(9));
+
+    Ok(())
+}
 ```
 
 `PidFd::wait` returns information about an exited process via the `ExitInfo`
@@ -62,6 +71,10 @@ concurrently.
 with an `async` version of the `wait` function.
 
 ```rust
+use std::os::unix::process::ExitStatusExt;
+use std::process::{Command, ExitStatus};
+
+use async_pidfd::AsyncPidFd;
 use futures_lite::future;
 
 async fn async_spawn_and_status(cmd: &mut Command) -> std::io::Result<ExitStatus> {
@@ -70,14 +83,16 @@ async fn async_spawn_and_status(cmd: &mut Command) -> std::io::Result<ExitStatus
     Ok(pidfd.wait().await?.status())
 }
 
-future::block_on(async {
-    let (status1, status2) = future::try_join(
-        async_spawn_and_status(&mut Command::new("/bin/true")),
-        async_spawn_and_status(&mut Command::new("/bin/false")),
-    )
-    .await?;
-    assert_eq!(status1.code(), Some(0));
-    assert_eq!(status2.code(), Some(1));
-    Ok(())
-})
+fn main() -> std::io::Result<()> {
+    future::block_on(async {
+        let (status1, status2) = future::try_join(
+            async_spawn_and_status(&mut Command::new("/bin/true")),
+            async_spawn_and_status(&mut Command::new("/bin/false")),
+        )
+        .await?;
+        assert_eq!(status1.code(), Some(0));
+        assert_eq!(status2.code(), Some(1));
+        Ok(())
+    })
+}
 ```
