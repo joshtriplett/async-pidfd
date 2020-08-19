@@ -6,6 +6,10 @@ on Linux, maintaining a persistent reference to a process using a file
 descriptor rather than a numeric process ID (PID) that could be reused after
 the process exits.
 
+This crate only works on Linux; if you need support for other platforms, or for
+older Linux kernels, see
+[async-process](https://crates.io/crates/async-process).
+
 `async-pidfd` provides Rust support for pidfd, and supports managing processes
 both synchronously (via the `PidFd` type) and asynchronously (via the
 `AsyncPidFd` type).
