@@ -1,6 +1,6 @@
 [package]
 name = "async-pidfd"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Josh Triplett <josh@joshtriplett.org>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
@@ -18,7 +18,7 @@ async = ["async-io"]
 
 [dependencies]
 async-io = { version = "0.1.11", optional = true }
-libc = "0.2.74"
+libc = "0.2.75"
 
 [dev-dependencies]
 futures-lite = "0.1.10"

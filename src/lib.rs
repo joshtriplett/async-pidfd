@@ -115,8 +115,6 @@ use std::process::ExitStatus;
 use async_io::Async;
 
 const SYS_PIDFD_OPEN: libc::c_long = 434;
-const P_PIDFD: libc::idtype_t = 3;
-const CLD_EXITED: libc::c_int = 1;
 
 fn syscall_result(ret: libc::c_long) -> io::Result<libc::c_long> {
     if ret == -1 {
@@ -139,7 +137,7 @@ fn waitid_pidfd(pidfd: RawFd) -> io::Result<(libc::siginfo_t, libc::rusage)> {
     unsafe {
         syscall_result(libc::syscall(
             libc::SYS_waitid,
-            P_PIDFD,
+            libc::P_PIDFD,
             pidfd,
             siginfo.as_mut_ptr(),
             libc::WEXITED,
@@ -183,36 +181,6 @@ impl AsRawFd for PidFd {
     }
 }
 
-// Accessor function for siginfo.si_status, until a released version of the libc crate provides it.
-mod siginfo_accessor {
-    #[repr(C)]
-    #[derive(Copy, Clone)]
-    struct sifields_sigchld {
-        si_pid: libc::pid_t,
-        si_uid: libc::uid_t,
-        si_status: libc::c_int,
-    }
-
-    #[repr(C)]
-    union sifields {
-        _align_pointer: *mut libc::c_void,
-        sigchld: sifields_sigchld,
-    }
-
-    #[repr(C)]
-    struct siginfo_sifields {
-        _siginfo_base: [libc::c_int; 3],
-        sifields: sifields,
-    }
-
-    pub(crate) unsafe fn siginfo_si_status(siginfo: &libc::siginfo_t) -> libc::c_int {
-        (*(siginfo as *const libc::siginfo_t as *const siginfo_sifields))
-            .sifields
-            .sigchld
-            .si_status
-    }
-}
-
 /// Information about an exited process.
 pub struct ExitInfo {
     /// Information about how the process exited.
@@ -224,8 +192,8 @@ pub struct ExitInfo {
 impl ExitInfo {
     /// Returns the exit status of the process.
     pub fn status(&self) -> ExitStatus {
-        let si_status = unsafe { siginfo_accessor::siginfo_si_status(&self.siginfo) };
-        let raw_status = if self.siginfo.si_code == CLD_EXITED {
+        let si_status = unsafe { self.siginfo.si_status() };
+        let raw_status = if self.siginfo.si_code == libc::CLD_EXITED {
             si_status << 8
         } else {
             si_status
