@@ -1,6 +1,6 @@
 [package]
 name = "async-pidfd"
-version = "0.1.2"
+version = "0.1.3"
 authors = ["Josh Triplett <josh@joshtriplett.org>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
