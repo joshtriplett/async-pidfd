@@ -18,7 +18,7 @@ async = ["async-io"]
 
 [dependencies]
 async-io = { version = "0.1.11", optional = true }
-libc = "0.2.75"
+libc = "0.2.78"
 
 [dev-dependencies]
 futures-lite = "0.1.10"

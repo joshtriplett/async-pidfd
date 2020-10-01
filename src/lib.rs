@@ -114,8 +114,6 @@ use std::process::ExitStatus;
 #[cfg(feature = "async")]
 use async_io::Async;
 
-const SYS_PIDFD_OPEN: libc::c_long = 434;
-
 fn syscall_result(ret: libc::c_long) -> io::Result<libc::c_long> {
     if ret == -1 {
         Err(io::Error::last_os_error())
@@ -126,7 +124,7 @@ fn syscall_result(ret: libc::c_long) -> io::Result<libc::c_long> {
 
 // pidfd_open sets `O_CLOEXEC` by default, without requiring a flag.
 fn pidfd_open(pid: libc::pid_t, flags: libc::c_uint) -> io::Result<RawFd> {
-    let ret = syscall_result(unsafe { libc::syscall(SYS_PIDFD_OPEN, pid, flags) })?;
+    let ret = syscall_result(unsafe { libc::syscall(libc::SYS_pidfd_open, pid, flags) })?;
     Ok(ret as RawFd)
 }
 
