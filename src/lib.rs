@@ -89,7 +89,7 @@
 //!
 //! fn main() -> std::io::Result<()> {
 //!     future::block_on(async {
-//!         let (status1, status2) = future::try_join(
+//!         let (status1, status2) = future::try_zip(
 //!             async_spawn_and_status(&mut Command::new("/bin/true")),
 //!             async_spawn_and_status(&mut Command::new("/bin/false")),
 //!         )
@@ -280,7 +280,7 @@ mod test {
     fn test_async() -> std::io::Result<()> {
         use futures_lite::future;
         future::block_on(async {
-            let (status1, status2) = future::try_join(
+            let (status1, status2) = future::try_zip(
                 async_spawn_and_status(&mut Command::new("/bin/true")),
                 async_spawn_and_status(&mut Command::new("/bin/false")),
             )
