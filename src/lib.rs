@@ -219,8 +219,7 @@ impl AsyncPidFd {
 
     /// Wait for the process to complete.
     pub async fn wait(&self) -> io::Result<ExitInfo> {
-        self.0.readable().await?;
-        self.0.get_ref().wait()
+        self.0.read_with(|pidfd| pidfd.wait()).await
     }
 }
 
