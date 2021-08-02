@@ -15,6 +15,7 @@ categories = ["api-bindings", "asynchronous", "os::unix-apis"]
 # synchronous pidfd support, you can disable the async feature.
 default = ["async"]
 async = ["async-io"]
+nightly = []
 
 [dependencies]
 async-io = { version = "1.2", optional = true }
