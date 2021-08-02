@@ -23,7 +23,8 @@
 //! in the standard library. (Note that the portable `Child::id` function returns
 //! process IDs as `u32`, rather than as a `libc::pid_t`, necessitating a cast.)
 //!
-//! ```rust
+#![cfg_attr(feature = "nightly", doc = "```ignore")]
+#![cfg_attr(not(feature = "nightly"), doc = "```rust")]
 //! use std::os::unix::process::ExitStatusExt;
 //! use std::process::{Command, ExitStatus};
 //!
@@ -74,7 +75,8 @@
 //! `AsyncPidFd` wraps an `Async<PidFd>` and provides the same API as `PidFd`, but
 //! with an `async` version of the `wait` function.
 //!
-//! ```rust
+#![cfg_attr(feature = "nightly", doc = "```ignore")]
+#![cfg_attr(not(feature = "nightly"), doc = "```rust")]
 //! use std::os::unix::process::ExitStatusExt;
 //! use std::process::{Command, ExitStatus};
 //!
@@ -101,18 +103,22 @@
 //! }
 //! ```
 #![forbid(missing_docs)]
+#![cfg_attr(feature = "nightly", feature(linux_pidfd))]
 
 #[cfg(not(target_os = "linux"))]
 compile_error!("pidfd only works on Linux");
 
 use std::io;
 use std::mem::MaybeUninit;
-use std::os::unix::io::{AsRawFd, RawFd};
+use std::os::unix::io::{AsRawFd, FromRawFd, RawFd};
 use std::os::unix::process::ExitStatusExt;
 use std::process::ExitStatus;
 
 #[cfg(feature = "async")]
 use async_io::Async;
+
+#[cfg(feature = "nightly")]
+use std::os::linux::process::PidFd;
 
 fn syscall_result(ret: libc::c_long) -> io::Result<libc::c_long> {
     if ret == -1 {
@@ -146,8 +152,10 @@ fn waitid_pidfd(pidfd: RawFd) -> io::Result<(libc::siginfo_t, libc::rusage)> {
 }
 
 /// A process file descriptor.
+#[cfg(not(feature = "nightly"))]
 pub struct PidFd(RawFd);
 
+#[cfg(not(feature = "nightly"))]
 impl PidFd {
     /// Create a process file descriptor from a PID.
     ///
@@ -157,25 +165,68 @@ impl PidFd {
     /// `SIGCHLD`, the process ID will not get reused, so it does not matter if the child process
     /// has already exited.
     pub fn from_pid(pid: libc::pid_t) -> io::Result<Self> {
-        Ok(Self(pidfd_open(pid, 0)?))
+        PidFdExt::from_pid(pid)
     }
 
     /// Wait for the process to complete.
     pub fn wait(&self) -> io::Result<ExitInfo> {
-        let (siginfo, rusage) = waitid_pidfd(self.0)?;
-        Ok(ExitInfo { siginfo, rusage })
+        PidFdExt::wait(self)
     }
 }
 
+#[cfg(not(feature = "nightly"))]
 impl Drop for PidFd {
     fn drop(&mut self) {
         unsafe { libc::close(self.0) };
     }
 }
 
+#[cfg(not(feature = "nightly"))]
 impl AsRawFd for PidFd {
     fn as_raw_fd(&self) -> RawFd {
         self.0
+    }
+}
+
+#[cfg(not(feature = "nightly"))]
+impl FromRawFd for PidFd {
+    unsafe fn from_raw_fd(fd: RawFd) -> Self {
+        Self(fd)
+    }
+}
+
+mod private {
+    pub trait Sealed {}
+    impl Sealed for super::PidFd {}
+}
+
+/// Extensions for `PidFd`
+pub trait PidFdExt: private::Sealed {
+    /// Create a process file descriptor from a PID.
+    ///
+    /// You can get a process ID from `std::process::Child` by calling `Child::id`.
+    ///
+    /// As long as this process has not yet waited on the child process, and has not blocked
+    /// `SIGCHLD`, the process ID will not get reused, so it does not matter if the child process
+    /// has already exited.
+    fn from_pid(pid: libc::pid_t) -> io::Result<Self>
+    where
+        Self: Sized;
+
+    /// Wait for the process to complete.
+    fn wait(&self) -> io::Result<ExitInfo>;
+}
+
+impl PidFdExt for PidFd {
+    fn from_pid(pid: libc::pid_t) -> io::Result<Self> {
+        let fd = pidfd_open(pid, 0)?;
+        // SAFETY: pidfd_open returned successful
+        Ok(unsafe { PidFd::from_raw_fd(fd) })
+    }
+
+    fn wait(&self) -> io::Result<ExitInfo> {
+        let (siginfo, rusage) = waitid_pidfd(self.as_raw_fd())?;
+        Ok(ExitInfo { siginfo, rusage })
     }
 }
 
@@ -206,6 +257,11 @@ pub struct AsyncPidFd(Async<PidFd>);
 
 #[cfg(feature = "async")]
 impl AsyncPidFd {
+    /// Create an async process file descriptor from a process file descriptor.
+    pub fn from_pidfd(pidfd: PidFd) -> io::Result<Self> {
+        Ok(Self(Async::new(pidfd)?))
+    }
+
     /// Create a process file descriptor from a PID.
     ///
     /// You can get a process ID from `std::process::Child` by calling `Child::id`.
@@ -214,7 +270,7 @@ impl AsyncPidFd {
     /// `SIGCHLD`, the process ID will not get reused, so it does not matter if the child process
     /// has already exited.
     pub fn from_pid(pid: libc::pid_t) -> io::Result<Self> {
-        Ok(Self(Async::new(PidFd::from_pid(pid)?)?))
+        Self::from_pidfd(PidFd::from_pid(pid)?)
     }
 
     /// Wait for the process to complete.
@@ -229,9 +285,24 @@ mod test {
     use super::*;
     use std::process::Command;
 
-    fn spawn_and_status(cmd: &mut Command) -> io::Result<ExitStatus> {
+    #[cfg(feature = "nightly")]
+    use std::os::linux::process::{ChildExt, CommandExt};
+
+    #[cfg(not(feature = "nightly"))]
+    fn spawn_with_pidfd(cmd: &mut Command) -> io::Result<PidFd> {
         let child = cmd.spawn()?;
-        let pidfd = PidFd::from_pid(child.id() as libc::pid_t)?;
+        PidFd::from_pid(child.id() as libc::pid_t)
+    }
+
+    #[cfg(feature = "nightly")]
+    fn spawn_with_pidfd(cmd: &mut Command) -> io::Result<PidFd> {
+        cmd.create_pidfd(true);
+        let mut child = cmd.spawn()?;
+        child.take_pidfd()
+    }
+
+    fn spawn_and_status(cmd: &mut Command) -> io::Result<ExitStatus> {
+        let pidfd = spawn_with_pidfd(cmd)?;
         Ok(pidfd.wait()?.status())
     }
 
@@ -259,8 +330,8 @@ mod test {
 
     #[test]
     fn test_wait_twice() -> std::io::Result<()> {
-        let child = Command::new("/bin/true").spawn()?;
-        let pidfd = PidFd::from_pid(child.id() as libc::pid_t)?;
+        let mut cmd = Command::new("/bin/true");
+        let pidfd = spawn_with_pidfd(&mut cmd)?;
         let status = pidfd.wait()?.status();
         assert!(status.success());
         let ret = pidfd.wait();
@@ -270,8 +341,7 @@ mod test {
 
     #[cfg(feature = "async")]
     async fn async_spawn_and_status(cmd: &mut Command) -> io::Result<ExitStatus> {
-        let child = cmd.spawn()?;
-        let pidfd = AsyncPidFd::from_pid(child.id() as libc::pid_t)?;
+        let pidfd = AsyncPidFd::from_pidfd(spawn_with_pidfd(cmd)?)?;
         Ok(pidfd.wait().await?.status())
     }
 
@@ -313,8 +383,8 @@ mod test {
     #[test]
     fn test_async_wait_twice() -> std::io::Result<()> {
         futures_lite::future::block_on(async {
-            let child = Command::new("/bin/true").spawn()?;
-            let pidfd = AsyncPidFd::from_pid(child.id() as libc::pid_t)?;
+            let mut cmd = Command::new("/bin/true");
+            let pidfd = AsyncPidFd::from_pidfd(spawn_with_pidfd(&mut cmd)?)?;
             let status = pidfd.wait().await?.status();
             assert!(status.success());
             let ret = pidfd.wait().await;
