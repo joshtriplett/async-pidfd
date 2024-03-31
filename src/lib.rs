@@ -107,6 +107,7 @@ compile_error!("pidfd only works on Linux");
 
 use std::io;
 use std::mem::MaybeUninit;
+use std::os::fd::{AsFd, BorrowedFd};
 use std::os::unix::io::{AsRawFd, RawFd};
 use std::os::unix::process::ExitStatusExt;
 use std::process::ExitStatus;
@@ -176,6 +177,12 @@ impl Drop for PidFd {
 impl AsRawFd for PidFd {
     fn as_raw_fd(&self) -> RawFd {
         self.0
+    }
+}
+
+impl AsFd for PidFd {
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        unsafe { BorrowedFd::borrow_raw(self.0) }
     }
 }
 
