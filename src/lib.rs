@@ -107,8 +107,7 @@ compile_error!("pidfd only works on Linux");
 
 use std::io;
 use std::mem::MaybeUninit;
-use std::os::fd::{AsFd, BorrowedFd};
-use std::os::unix::io::{AsRawFd, RawFd};
+use std::os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, OwnedFd, RawFd};
 use std::os::unix::process::ExitStatusExt;
 use std::process::ExitStatus;
 
@@ -124,13 +123,13 @@ fn syscall_result(ret: libc::c_long) -> io::Result<libc::c_long> {
 }
 
 // pidfd_open sets `O_CLOEXEC` by default, without requiring a flag.
-fn pidfd_open(pid: libc::pid_t, flags: libc::c_uint) -> io::Result<RawFd> {
+fn pidfd_open(pid: libc::pid_t, flags: libc::c_uint) -> io::Result<OwnedFd> {
     let ret = syscall_result(unsafe { libc::syscall(libc::SYS_pidfd_open, pid, flags) })?;
-    Ok(ret as RawFd)
+    Ok(unsafe { OwnedFd::from_raw_fd(ret as RawFd) })
 }
 
 // Use the raw waitid syscall, which additionally provides the rusage argument.
-fn waitid_pidfd(pidfd: RawFd) -> io::Result<(libc::siginfo_t, libc::rusage)> {
+fn waitid_pidfd(pidfd: BorrowedFd) -> io::Result<(libc::siginfo_t, libc::rusage)> {
     let mut siginfo = MaybeUninit::uninit();
     let mut rusage = MaybeUninit::uninit();
     unsafe {
@@ -147,7 +146,7 @@ fn waitid_pidfd(pidfd: RawFd) -> io::Result<(libc::siginfo_t, libc::rusage)> {
 }
 
 /// A process file descriptor.
-pub struct PidFd(RawFd);
+pub struct PidFd(OwnedFd);
 
 impl PidFd {
     /// Create a process file descriptor from a PID.
@@ -163,26 +162,20 @@ impl PidFd {
 
     /// Wait for the process to complete.
     pub fn wait(&self) -> io::Result<ExitInfo> {
-        let (siginfo, rusage) = waitid_pidfd(self.0)?;
+        let (siginfo, rusage) = waitid_pidfd(self.0.as_fd())?;
         Ok(ExitInfo { siginfo, rusage })
-    }
-}
-
-impl Drop for PidFd {
-    fn drop(&mut self) {
-        unsafe { libc::close(self.0) };
     }
 }
 
 impl AsRawFd for PidFd {
     fn as_raw_fd(&self) -> RawFd {
-        self.0
+        self.0.as_raw_fd()
     }
 }
 
 impl AsFd for PidFd {
     fn as_fd(&self) -> BorrowedFd<'_> {
-        unsafe { BorrowedFd::borrow_raw(self.0) }
+        self.0.as_fd()
     }
 }
 
