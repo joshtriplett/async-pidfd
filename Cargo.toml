@@ -17,11 +17,11 @@ default = ["async"]
 async = ["async-io"]
 
 [dependencies]
-async-io = { version = "2.0", optional = true }
-libc = "0.2.78"
+async-io = { version = "2.4", optional = true }
+libc = "0.2.172"
 
 [dev-dependencies]
-futures-lite = "2.0"
+futures-lite = "2.6"
 
 [lints.rust]
 non_ascii_idents = "deny"
