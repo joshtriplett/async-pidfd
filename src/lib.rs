@@ -236,7 +236,7 @@ mod test {
     }
 
     #[test]
-    fn test() -> std::io::Result<()> {
+    fn test() -> io::Result<()> {
         let status = spawn_and_status(&mut Command::new("/bin/true"))?;
         assert_eq!(status.code(), Some(0));
         assert_eq!(status.signal(), None);
@@ -258,7 +258,7 @@ mod test {
     }
 
     #[test]
-    fn test_wait_twice() -> std::io::Result<()> {
+    fn test_wait_twice() -> io::Result<()> {
         let child = Command::new("/bin/true").spawn()?;
         let pidfd = PidFd::from_pid(child.id() as libc::pid_t)?;
         let status = pidfd.wait()?.status();
@@ -277,7 +277,7 @@ mod test {
 
     #[cfg(feature = "async")]
     #[test]
-    fn test_async() -> std::io::Result<()> {
+    fn test_async() -> io::Result<()> {
         use futures_lite::future;
         future::block_on(async {
             let (status1, status2) = future::try_zip(
@@ -293,7 +293,7 @@ mod test {
 
     #[cfg(feature = "async")]
     #[test]
-    fn test_async_concurrent() -> std::io::Result<()> {
+    fn test_async_concurrent() -> io::Result<()> {
         use futures_lite::future::{self, FutureExt};
         future::block_on(async {
             let status = async_spawn_and_status(
@@ -311,7 +311,7 @@ mod test {
 
     #[cfg(feature = "async")]
     #[test]
-    fn test_async_wait_twice() -> std::io::Result<()> {
+    fn test_async_wait_twice() -> io::Result<()> {
         futures_lite::future::block_on(async {
             let child = Command::new("/bin/true").spawn()?;
             let pidfd = AsyncPidFd::from_pid(child.id() as libc::pid_t)?;

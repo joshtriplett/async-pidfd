@@ -22,3 +22,28 @@ libc = "0.2.78"
 
 [dev-dependencies]
 futures-lite = "2.0"
+
+[lints.rust]
+non_ascii_idents = "deny"
+unfulfilled_lint_expectations = "deny"
+unit_bindings = "deny"
+unsafe_op_in_unsafe_fn = "deny"
+unused_qualifications = "deny"
+
+[lints.clippy]
+allow_attributes = "deny"
+char_lit_as_u8 = "deny"
+ignored_unit_patterns = "deny"
+manual_is_variant_and = "deny"
+manual_let_else = "deny"
+needless_borrow = "deny"
+needless_borrowed_reference = "allow"
+needless_question_mark = "allow"
+needless_raw_string_hashes = "deny"
+needless_raw_strings = "deny"
+non_ascii_literal = "deny"
+ptr_as_ptr = "deny"
+should_panic_without_expect = "deny"
+string_to_string = "deny"
+uninlined_format_args = "deny"
+unnecessary_cast = "deny"
