@@ -14,6 +14,11 @@ older Linux kernels, see
 both synchronously (via the `PidFd` type) and asynchronously (via the
 `AsyncPidFd` type).
 
+Note that the Rust standard library now has [preliminary support for
+pidfd](https://doc.rust-lang.org/std/?search=pidfd) in nightly. Once that
+becomes stable, this crate will update to use it and only provide functionality
+that the standard library doesn't.
+
 Sync - `PidFd`
 --------------
 
