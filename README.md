@@ -65,11 +65,10 @@ Async - `AsyncPidFd`
 --------------------
 
 The `AsyncPidFd` type manages processes asynchronously, based on the
-[`async-io`](https://docs.rs/async-io/) crate by Stjepan Glavina. `async-io`
-provides an `Async` wrapper that makes it easy to turn any synchronous type
-based on a file descriptor into an asynchronous type; the resulting
-asynchronous code uses `epoll` to wait for all the file descriptors
-concurrently.
+[`async-io`](https://docs.rs/async-io/) crate. `async-io` provides an `Async`
+wrapper that makes it easy to turn any synchronous type based on a file
+descriptor into an asynchronous type; the resulting asynchronous code uses
+`epoll` to wait for all the file descriptors concurrently.
 
 `AsyncPidFd` wraps an `Async<PidFd>` and provides the same API as `PidFd`, but
 with an `async` version of the `wait` function.
