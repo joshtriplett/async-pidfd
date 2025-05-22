@@ -1,0 +1,20 @@
+name: cargo-deny
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '**/Cargo.lock'
+      - '**/Cargo.toml'
+      - '**/deny.toml'
+
+jobs:
+  cargo-deny:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+      - run: cargo install --locked cargo-deny
+      - run: cargo deny check licenses
